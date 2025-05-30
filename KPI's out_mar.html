@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KPI's Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+    color: #34495E;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #sidebar {
+    background: #2C3E50;
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+    box-sizing: border-box;
+  }
+  #sidebar button {
+    background: none;
+    border: none;
+    color: #bdc3c7;
+    padding: 15px 25px;
+    text-align: left;
+    font-size: 18px;
+    cursor: pointer;
+    border-left: 5px solid transparent;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #sidebar button.active, #sidebar button:hover {
+    background: #34495E;
+    color: #ecf0f1;
+    border-left: 5px solid #e67e22;
+  }
+  #content {
+    flex-grow: 1;
+    padding: 30px 40px;
+    overflow-y: auto;
+    background: #ecf0f1;
+  }
+  h1 {
+    margin-top: 0;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 30px;
+  }
+  .legenda {
+    margin-top: 15px;
+    font-size: 16px;
+    display: flex;
+    gap: 20px;
+    font-weight: 600;
+  }
+  .legenda .dev {
+    color: #e74c3c;
+  }
+  .legenda .esp {
+    color: #f39c12;
+  }
+  .legenda .exc {
+    color: #27ae60;
+  }
+  .percentages {
+    margin-top: 20px;
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    gap: 25px;
+  }
+  .percentages > div {
+    padding: 8px 15px;
+    border-radius: 8px;
+  }
+  .percentages > div:nth-child(1) {
+    background-color: #e74c3c88;
+    color: #7f1c12;
+  }
+  .percentages > div:nth-child(2) {
+    background-color: #f39c1288;
+    color: #6f4b0b;
+  }
+  .percentages > div:nth-child(3) {
+    background-color: #27ae6088;
+    color: #145a32;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 17px;
+  }
+  table th, table td {
+    border: 1px solid #bdc3c7;
+    padding: 12px 15px;
+    text-align: center;
+  }
+  table th {
+    background-color: #34495E;
+    color: #ecf0f1;
+  }
+  table tbody tr:nth-child(even) {
+    background-color: #dfe6e9;
+  }
+  /* Scrollbar for content */
+  #content::-webkit-scrollbar {
+    width: 8px;
+  }
+  #content::-webkit-scrollbar-thumb {
+    background-color: #bdc3c7;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <!-- Buttons serão adicionados via JS -->
+</div>
+
+<div id="content">
+  <h1>KPI's  📊</h1>
+  <!-- Conteúdo do gráfico ou tabela -->
+</div>
+
+<script>
+const dados = {
+  "Tempo de resposta ⏰": [17, 12, 17, 20, 23, 18],
+  "Volume de chamados 💻": [358, 400, 444, 456, 468, 388],
+  "Tempo de atendimento geral ⏱️": [49.9, 53.3, 55.5, 76.6, 69.5, 58.4],
+  "CSAT ⭐": [97.06, 98.61, 94.87, 97.22, 96.25, 92.98],
+  "Audit 📋": [9.5, 9.67, 10, 9.75, 10, 9.75]
+};
+
+const metricas = {
+  "Tempo de resposta ⏰": [
+    {min: 0, max: 20, label:"Excepcional", color:"#27ae60"},
+    {min: 20, max: 60, label:"Dentro do esperado", color:"#f39c12"},
+    {min: 60, max: 1000, label:"Necessitou desenvolvimento", color:"#e74c3c"}
+  ],
+  "Volume de chamados 💻": [
+    {min: 0, max: 220, label:"Necessitou desenvolvimento", color:"#e74c3c"},
+    {min: 220, max: 1000, label:"Dentro do esperado", color:"#f39c12"},
+  ],
+  "Tempo de atendimento geral ⏱️": [
+    {min: 0, max: 54, label:"Excepcional", color:"#27ae60"},
+    {min: 54, max: 70, label:"Dentro do esperado", color:"#f39c12"},
+    {min: 70, max: 1000, label:"Necessitou desenvolvimento", color:"#e74c3c"}
+  ],
+  "CSAT ⭐": [
+    {min: 0, max: 91, label:"Necessitou desenvolvimento", color:"#e74c3c"},
+    {min: 91, max: 95, label:"Dentro do esperado", color:"#f39c12"},
+    {min: 95, max: 100, label:"Excepcional", color:"#27ae60"}
+  ],
+  "Audit 📋": [
+    {min: 0, max: 8, label:"Necessitou desenvolvimento", color:"#e74c3c"},
+    {min: 8, max: 10, label:"Dentro do esperado", color:"#f39c12"},
+    {min: 10, max: 11, label:"Excepcional", color:"#27ae60"}
+  ],
+};
+
+const meses = ["Outubro", "Novembro", "Dezembro", "Janeiro", "Fevereiro", "Março"];
+
+function classificaValor(indicador, valor) {
+  const faixa = metricas[indicador].find(f => valor >= f.min && valor < f.max);
+  if (!faixa) return ["Sem classificação", "#999999"];
+  return [faixa.label, faixa.color];
+}
+
+function criaGrafico(indicador) {
+  const valores = dados[indicador];
+  const metricasIndicador = metricas[indicador];
+  const yMin = Math.min(...valores) * 0.8;
+  const yMax = Math.max(...valores) * 1.2;
+
+  // Criar shapes para as faixas coloridas
+  const shapes = metricasIndicador.map(f => ({
+    type: 'rect',
+    xref: 'paper',
+    yref: 'y',
+    x0: 0,
+    x1: 1,
+    y0: f.min,
+    y1: f.max,
+    fillcolor: f.color + "33",
+    line: {width: 0},
+    layer: "below"
+  }));
+
+  // Cores dos pontos
+  const cores = valores.map(v => classificaValor(indicador, v)[1]);
+
+  return {
+    data: [{
+      x: meses,
+      y: valores,
+      mode: 'lines+markers',
+      line: {color: "#34495E", shape: 'spline', width: 3},
+      marker: {color: cores, size: 10, line: {width: 1, color: '#34495E'}},
+      hoverinfo: 'x+y',
+    }],
+    layout: {
+      title: {text: indicador, font: {size: 24}},
+      margin: {t: 60, r: 40, b: 50, l: 60},
+      yaxis: {range: [yMin, yMax], zeroline: false, title: indicador, tickfont: {size: 14}},
+      xaxis: {title: "Meses", tickfont: {size: 14}},
+      shapes: shapes,
+      plot_bgcolor: "#fafafa",
+      hovermode: "closest",
+      font: {family: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif", size: 14, color: "#34495E"},
+    }
+  };
+}
+
+function calculaPorcentagens(indicador) {
+  const valores = dados[indicador];
+  const metricasIndicador = metricas[indicador];
+  const tot = valores.length;
+  const cont = { "Necessitou desenvolvimento": 0, "Dentro do esperado": 0, "Excepcional": 0 };
+  valores.forEach(v => {
+    const [label] = classificaValor(indicador, v);
+    cont[label] = (cont[label] || 0) + 1;
+  });
+  return {
+    "Necessitou desenvolvimento": ((cont["Necessitou desenvolvimento"] / tot) * 100).toFixed(1),
+    "Dentro do esperado": ((cont["Dentro do esperado"] / tot) * 100).toFixed(1),
+    "Excepcional": ((cont["Excepcional"] / tot) * 100).toFixed(1),
+  };
+}
+
+function criaPercentuaisHTML(indicador) {
+  const pct = calculaPorcentagens(indicador);
+  return `
+    <div class="percentages">
+      <div style="color:#e74c3c;">❌ Necessitou desenvolvimento: ${pct["Necessitou desenvolvimento"]}%</div>
+      <div style="color:#f39c12;">✅ Dentro do esperado: ${pct["Dentro do esperado"]}%</div>
+      <div style="color:#27ae60;">🌟 Excepcional: ${pct["Excepcional"]}%</div>
+    </div>
+  `;
+}
+
+function criaLegendaHTML() {
+  return `
+    <div class="legenda">
+      <span class="dev">🟥 Necessitou desenvolvimento</span>
+      <span class="esp">🟨 Dentro do esperado</span>
+      <span class="exc">🟩 Excepcional</span>
+    </div>
+  `;
+}
+
+function criaMediaGeralHTML() {
+  let linhas = "";
+  Object.keys(dados).forEach(indicador => {
+    const valores = dados[indicador];
+    const media = valores.reduce((a,b) => a + b, 0)/valores.length;
+    const [classif, cor] = classificaValor(indicador, media);
+    linhas += `<tr>
+      <td>${indicador}</td>
+      <td style="font-weight:bold; color:${cor};">${media.toFixed(2)}</td>
+      <td style="font-weight:bold; color:${cor};">${classif}</td>
+    </tr>`;
+  });
+  return `
+    <table>
+      <thead>
+        <tr><th>Indicador</th><th>Média</th><th>Classificação</th></tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>
+  `;
+}
+
+// Construir navegação e conteúdo
+
+const sidebar = document.getElementById("sidebar");
+const content = document.getElementById("content");
+
+const indicadores = Object.keys(dados).concat(["Média Geral 📈"]);
+
+function setActiveTab(idx) {
+  // Atualizar botão ativo
+  [...sidebar.children].forEach((btn,i) => {
+    btn.classList.toggle("active", i === idx);
+  });
+
+  // Atualizar conteúdo
+  content.innerHTML = "";
+  if (idx === indicadores.length - 1) {
+    // Média Geral
+    content.innerHTML = `<h1>KPI's  📊</h1><p><strong>Média geral dos indicadores com classificação:</strong></p>${criaMediaGeralHTML()}`;
+  } else {
+    const ind = indicadores[idx];
+    content.innerHTML = `<h1>KPI's  📊</h1><div id="graph"></div>${criaLegendaHTML()}${criaPercentuaisHTML(ind)}`;
+    Plotly.newPlot("graph", criaGrafico(ind).data, criaGrafico(ind).layout, {displayModeBar:false, responsive:true});
+  }
+}
+
+// Criar botões na sidebar
+indicadores.forEach((ind, i) => {
+  const btn = document.createElement("button");
+  btn.innerHTML = ind;
+  btn.onclick = () => setActiveTab(i);
+  if (i === 0) btn.classList.add("active");
+  sidebar.appendChild(btn);
+});
+
+// Inicializa primeira aba
+setActiveTab(0);
+
+</script>
+</body>
+</html>
